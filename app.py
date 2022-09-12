@@ -2,7 +2,6 @@ from flask import Flask, request, flash, redirect, url_for, send_from_directory
 from werkzeug.utils import secure_filename
 from celery_worker import task1
 import os
-import time
 
 UPLOAD_FOLDER = './uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -31,7 +30,7 @@ def uploads():
             return redirect(request.url)
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))  # зберігати ?
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             task1.delay(filename)
             return redirect(url_for('download_file', name=filename))
 
