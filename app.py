@@ -4,13 +4,21 @@ from celery_worker import task1
 import os
 import os.path
 import time
-import sqlite3
+# import sqlite3
+from flask_migrate import Migrate
+from models import db, Test
 
 UPLOAD_FOLDER = './uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:example@127.0.0.1:5432/postgres'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db.init_app(app)
+
+migrate = Migrate(app, db, render_as_batch=True)
 
 
 def allowed_file(filename):
@@ -35,13 +43,16 @@ def uploads():
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             task_obj = task1.delay(filename)
 
-            with sqlite3.connect('identifier.sqlite') as con:
-                cur = con.cursor()
-                cur.execute(f"""INSERT INTO task_state(task_id, file_name, status)
-                                            VALUES ('{str(task_obj)}', '{filename}', 'added')""")
-                con.commit()
+            # with sqlite3.connect('identifier.sqlite') as con:
+            #     cur = con.cursor()
+            #     cur.execute(f"""INSERT INTO task_state(task_id, file_name, status)
+            #                                 VALUES ('{str(task_obj)}', '{filename}', 'added')""")
+            #     con.commit()
 
-            time.sleep(2)  # wait when task resize the image
+            db.session.add(Test(task_id=str(task_obj), file_name=filename, status='added'))
+            db.session.commit()
+
+            time.sleep(3)  # wait when task resize the image
             return redirect(url_for('download_file', name=filename))
 
     return render_template("main_page.html")
